@@ -1,0 +1,14 @@
+node_modules/ 
+dist/ 
+*.zip 
+.env 
+.DS_Store 
+thumbs.db 
+video_frames/ 
+qa-*.png 
+*-check.png 
+header-dropdown-check.png 
+modal-cat-check.png 
+modal-cat-happy-check.png 
+challenge-wheel-check.png 
+challenge-wheel-manual-check.png 
