@@ -23,26 +23,11 @@ import {
 } from 'lucide-react';
 import './styles.css';
 import { generatedQuestions } from './data/generatedQuestions.js';
+import { importedClasses, importedStudents } from './data/importedRoster.js';
 
-const classesSeed = [
-  { id: 'class-1', name: '高一三班' },
-  { id: 'class-2', name: '高一四班' }
-];
-
-const studentsSeed = [
-  { id: 1, classId: 'class-1', name: '林子轩', number: 17, classScore: 280, totalScore: 1860 },
-  { id: 2, classId: 'class-1', name: '陈乐涵', number: 8, classScore: 120, totalScore: 680 },
-  { id: 3, classId: 'class-1', name: '周奕辰', number: 12, classScore: 110, totalScore: 620 },
-  { id: 4, classId: 'class-1', name: '李思远', number: 23, classScore: 100, totalScore: 590 },
-  { id: 5, classId: 'class-1', name: '王梓萱', number: 5, classScore: 80, totalScore: 500 },
-  { id: 6, classId: 'class-1', name: '赵一诺', number: 31, classScore: 70, totalScore: 460 },
-  { id: 7, classId: 'class-1', name: '张景行', number: 19, classScore: 60, totalScore: 420 },
-  { id: 8, classId: 'class-1', name: '黄子墨', number: 26, classScore: 50, totalScore: 380 },
-  { id: 9, classId: 'class-1', name: '吴雨桐', number: 2, classScore: 40, totalScore: 340 },
-  { id: 10, classId: 'class-1', name: '徐浩然', number: 35, classScore: 30, totalScore: 300 },
-  { id: 11, classId: 'class-2', name: '许知夏', number: 4, classScore: 60, totalScore: 260 },
-  { id: 12, classId: 'class-2', name: '沈星河', number: 11, classScore: 40, totalScore: 180 }
-];
+const classesSeed = importedClasses;
+const studentsSeed = importedStudents;
+const rosterVersion = 'attendance-roster-2026-06-04-v2';
 
 const questionsSeed = generatedQuestions;
 const questionBankSeed = Array.from(new Set(questionsSeed.map((question) => question.unit)));
@@ -96,6 +81,25 @@ function App() {
   const challengeWheelTimer = useRef(null);
   const catTimer = useRef(null);
   const petZoneRef = useRef(null);
+
+  useEffect(() => {
+    let shouldImportRoster = true;
+    try {
+      shouldImportRoster = window.localStorage.getItem('music-history-roster-version') !== rosterVersion;
+      if (!shouldImportRoster) return;
+      window.localStorage.setItem('music-history-classes', JSON.stringify(classesSeed));
+      window.localStorage.setItem('music-history-students', JSON.stringify(studentsSeed));
+      window.localStorage.setItem('music-history-current-class', JSON.stringify(classesSeed[0]?.id ?? ''));
+      window.localStorage.setItem('music-history-roster-version', rosterVersion);
+    } catch {
+      // Local storage may be unavailable in restricted browser modes.
+    }
+    if (!shouldImportRoster) return;
+    setClasses(classesSeed);
+    setStudents(studentsSeed);
+    setCurrentClassId(classesSeed[0]?.id ?? '');
+    setCurrentStudentId(studentsSeed[0]?.id ?? null);
+  }, [setClasses, setCurrentClassId, setStudents]);
 
   const currentClass = classes.find((item) => item.id === currentClassId) ?? classes[0];
   const classStudents = students.filter((student) => student.classId === currentClass?.id);
@@ -962,10 +966,21 @@ function ClassSettings({ classes, setClasses, students, setStudents, currentClas
   function addClass() {
     const trimmed = className.trim();
     if (!trimmed) return;
+    if (classes.some((item) => item.name === trimmed)) return;
     const newClass = { id: `class-${Date.now()}`, name: trimmed };
     setClasses((current) => [...current, newClass]);
     setCurrentClassId(newClass.id);
     setClassName('');
+  }
+
+  function removeClass(classId) {
+    const remainingClasses = classes.filter((item) => item.id !== classId);
+    setClasses(remainingClasses);
+    setStudents((current) => current.filter((student) => student.classId !== classId));
+    setSelectedStudentIds([]);
+    if (currentClassId === classId) {
+      setCurrentClassId(remainingClasses[0]?.id ?? '');
+    }
   }
 
   function addStudent() {
@@ -1046,14 +1061,20 @@ function ClassSettings({ classes, setClasses, students, setStudents, currentClas
         <p>点击班级后，在右侧管理该班学生名单和积分。</p>
         <div className="choice-grid class-choice-grid">
           {classes.map((item) => (
-            <button
+            <div
               key={item.id}
-              className={item.id === currentClassId ? 'active' : ''}
-              onClick={() => setCurrentClassId(item.id)}
+              className={`class-choice-row ${item.id === currentClassId ? 'active' : ''}`}
             >
-              <strong>{item.name}</strong>
-              <span>{students.filter((student) => student.classId === item.id).length} 人</span>
-            </button>
+              <button className="class-select-button" onClick={() => setCurrentClassId(item.id)}>
+                <strong>{item.name}</strong>
+                <span>{students.filter((student) => student.classId === item.id).length} 人</span>
+              </button>
+              <div className="class-row-actions">
+                <button className="class-delete-button" onClick={() => removeClass(item.id)}>
+                  删除
+                </button>
+              </div>
+            </div>
           ))}
         </div>
         <div className="inline-form class-create-form">
